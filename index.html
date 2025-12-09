@@ -115,7 +115,7 @@
                 </div>
             </div>
             
-            <!-- ISP Info Block -->
+            <!-- ISP Info Block (Hidden on Mobile) -->
             <div class="flex items-center gap-6 text-sm">
                 <div class="hidden md:block text-right">
                     <div class="text-[10px] text-slate-500 uppercase tracking-wider">Public IP</div>
@@ -321,6 +321,32 @@
                         </div>
                     </div>
 
+                    <!-- New ISP Detail (Visible on all screens) -->
+                    <div class="flex justify-between items-center p-3 rounded-xl bg-slate-900/50 border border-slate-800">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-400">
+                                <i class="fa-solid fa-network-wired"></i>
+                            </div>
+                            <div>
+                                <div class="text-[10px] text-slate-500 uppercase">Provider</div>
+                                <div id="isp-detail-val" class="text-xs font-bold text-white truncate max-w-[150px]">Detecting...</div>
+                            </div>
+                        </div>
+                    </div>
+
+                     <!-- New Public IP Detail (Visible on all screens) -->
+                     <div class="flex justify-between items-center p-3 rounded-xl bg-slate-900/50 border border-slate-800">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-400">
+                                <i class="fa-solid fa-fingerprint"></i>
+                            </div>
+                            <div>
+                                <div class="text-[10px] text-slate-500 uppercase">Public IP</div>
+                                <div id="ip-detail-val" class="text-xs font-bold text-white font-mono">...</div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="flex justify-between items-center p-3 rounded-xl bg-slate-900/50 border border-slate-800">
                         <div class="flex items-center gap-3">
                             <div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-400">
@@ -383,15 +409,23 @@
                     region: data.region_code || ''
                 };
 
-                // Update UI
+                // Update UI (Header)
                 document.getElementById('ip-display').innerText = state.ipData.ip;
                 document.getElementById('isp-display').innerText = state.ipData.org;
+                
+                // Update UI (Details Card)
                 document.getElementById('location-val').innerText = `${state.ipData.city}, ${state.ipData.region}`;
+                document.getElementById('isp-detail-val').innerText = state.ipData.org;
+                document.getElementById('ip-detail-val').innerText = state.ipData.ip;
 
             } catch (e) {
                 console.warn("Could not fetch IP details (Adblocker likely active).");
-                document.getElementById('ip-display').innerText = 'Hidden/Blocked';
+                const msg = 'Hidden/Blocked';
+                document.getElementById('ip-display').innerText = msg;
                 document.getElementById('isp-display').innerText = 'Private Network';
+                
+                document.getElementById('isp-detail-val').innerText = 'Private Network';
+                document.getElementById('ip-detail-val').innerText = msg;
             }
         }
 
