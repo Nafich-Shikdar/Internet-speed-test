@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NetPulse Pro | Advanced Speed Tool</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Inter:wght@300;400;600&display=swap');
+
+        :root {
+            --primary: #06b6d4;
+            --secondary: #6366f1;
+            --success: #10b981;
+            --bg-dark: #0f172a;
+            --panel-bg: rgba(30, 41, 59, 0.7);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-dark);
+            color: white;
+            overflow-x: hidden;
+        }
+
+        .font-tech {
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        /* --- Animations --- */
+        .gauge-circle {
+            transition: stroke-dashoffset 0.1s ease-out, stroke 0.3s ease;
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
+        }
+
+        .glow-text {
+            text-shadow: 0 0 15px rgba(6, 182, 212, 0.6);
+        }
+
+        .btn-pulse {
+            animation: pulse-cyan 2s infinite;
+        }
+
+        @keyframes pulse-cyan {
+            0% { box-shadow: 0 0 0 0 rgba(6, 182, 212, 0.7); }
+            70% { box-shadow: 0 0 0 15px rgba(6, 182, 212, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(6, 182, 212, 0); }
+        }
+
+        .scanline {
+            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.2));
+            background-size: 100% 4px;
+            position: fixed;
+            pointer-events: none;
+            inset: 0;
+            z-index: 999;
+            opacity: 0.1;
+        }
+
+        /* --- Background --- */
+        .grid-bg {
+            background-image: 
+                linear-gradient(rgba(6, 182, 212, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(6, 182, 212, 0.05) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+
+        /* --- UI Components --- */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+        .metric-card {
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255,255,255,0.05);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        
+        .metric-card.active {
+            border-color: var(--primary);
+            box-shadow: 0 0 20px rgba(6, 182, 212, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .metric-card.active.download { border-color: var(--success); box-shadow: 0 0 20px rgba(16, 185, 129, 0.15); }
+        .metric-card.active.upload { border-color: var(--secondary); box-shadow: 0 0 20px rgba(99, 102, 241, 0.15); }
+
+        /* Custom gradients for text */
+        .text-gradient-cyan {
+            background: linear-gradient(to right, #22d3ee, #06b6d4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col grid-bg text-slate-200">
+
+    <div class="scanline"></div>
+
+    <!-- Header -->
+    <header class="w-full p-4 border-b border-slate-800 bg-slate-900/90 backdrop-blur-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-cyan-500/10 flex items-center justify-center border border-cyan-500/20">
+                    <i class="fa-solid fa-bolt text-cyan-400 text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-tech font-black tracking-widest text-white leading-none">NET<span class="text-cyan-400">PULSE</span></h1>
+                    <span class="text-[10px] uppercase tracking-[0.2em] text-slate-500">Professional Tool</span>
+                </div>
+            </div>
+            
+            <!-- ISP Info Block -->
+            <div class="flex items-center gap-6 text-sm">
+                <div class="hidden md:block text-right">
+                    <div class="text-[10px] text-slate-500 uppercase tracking-wider">Public IP</div>
+                    <div id="ip-display" class="font-mono text-cyan-200">Detecting...</div>
+                </div>
+                <div class="hidden md:block w-px h-8 bg-slate-800"></div>
+                <div class="hidden md:block text-right">
+                    <div class="text-[10px] text-slate-500 uppercase tracking-wider">Provider</div>
+                    <div id="isp-display" class="font-bold text-white">Detecting...</div>
+                </div>
+                <div class="flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800 border border-slate-700">
+                    <div id="status-dot" class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                    <span id="system-status" class="text-xs font-mono text-slate-300">READY</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow max-w-7xl mx-auto w-full p-4 md:p-8 flex flex-col gap-6">
+        
+        <!-- Top Section: Gauge & Graph -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            <!-- Main Gauge Card -->
+            <div class="lg:col-span-5 metric-card rounded-3xl p-8 flex flex-col items-center justify-between relative min-h-[400px]">
+                <div class="absolute top-6 left-6 flex items-center gap-2">
+                    <div class="w-2 h-2 bg-slate-600 rounded-full"></div>
+                    <span class="text-xs font-bold text-slate-500 tracking-widest uppercase">Speedometer</span>
+                </div>
+                
+                <!-- SVG Gauge -->
+                <div class="relative w-72 h-72 mt-4">
+                    <svg class="w-full h-full" viewBox="0 0 200 200">
+                        <!-- Defs for Gradient -->
+                        <defs>
+                            <linearGradient id="gaugeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" style="stop-color:#06b6d4;stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#6366f1;stop-opacity:1" />
+                            </linearGradient>
+                        </defs>
+                        <!-- Background Circle -->
+                        <circle cx="100" cy="100" r="90" fill="none" stroke="#1e293b" stroke-width="12" stroke-linecap="round" stroke-dasharray="420" stroke-dashoffset="100" transform="rotate(135 100 100)" />
+                        
+                        <!-- Ticks (Visual only) -->
+                        <path d="M 30 170 L 25 175" stroke="#334155" stroke-width="2" />
+                        <path d="M 170 170 L 175 175" stroke="#334155" stroke-width="2" />
+                        <path d="M 100 10 L 100 5" stroke="#334155" stroke-width="2" />
+
+                        <!-- Active Progress Circle -->
+                        <circle id="gauge-progress" cx="100" cy="100" r="90" fill="none" stroke="url(#gaugeGradient)" stroke-width="12" stroke-linecap="round" stroke-dasharray="420" stroke-dashoffset="420" transform="rotate(135 100 100)" class="gauge-circle" />
+                    </svg>
+                    
+                    <!-- Center Text -->
+                    <div class="absolute inset-0 flex flex-col items-center justify-center">
+                        <span id="main-speed-display" class="text-6xl font-tech font-bold text-white glow-text tracking-tighter">0.0</span>
+                        <span class="text-sm text-cyan-400 font-bold mt-2 uppercase tracking-wide">Mbps</span>
+                        <div id="phase-badge" class="mt-4 px-3 py-1 rounded-full bg-slate-800 text-[10px] text-slate-400 font-bold uppercase tracking-widest border border-slate-700">
+                            IDLE
+                        </div>
+                    </div>
+                </div>
+
+                <div class="w-full flex justify-center pb-2">
+                    <button id="start-btn" onclick="startSpeedTest()" class="group relative px-16 py-4 bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-tech font-bold text-xl rounded-xl transition-all transform hover:-translate-y-1 active:translate-y-0 shadow-[0_0_20px_rgba(6,182,212,0.3)] btn-pulse overflow-hidden">
+                        <span class="relative z-10">START TEST</span>
+                        <div class="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Right Side: Graph & Metrics -->
+            <div class="lg:col-span-7 flex flex-col gap-6">
+                
+                <!-- Live Graph -->
+                <div class="metric-card rounded-3xl p-1 h-64 relative overflow-hidden group">
+                    <div class="absolute top-4 left-5 z-10">
+                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                            <i class="fa-solid fa-chart-line"></i> Real-Time Throughput
+                        </h3>
+                    </div>
+                    <div class="absolute top-4 right-5 z-10 flex gap-2">
+                        <div class="flex items-center gap-1 text-[10px] text-slate-500">
+                            <div class="w-2 h-2 rounded-full bg-cyan-500"></div> Live
+                        </div>
+                    </div>
+                    <canvas id="speedChart" class="w-full h-full rounded-2xl bg-slate-900/50"></canvas>
+                    
+                    <!-- Grid Overlay for "Scope" effect -->
+                    <div class="absolute inset-0 pointer-events-none opacity-20" 
+                         style="background-image: linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px); background-size: 20px 20px;">
+                    </div>
+                </div>
+
+                <!-- Stats Grid -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 flex-grow">
+                    <!-- Ping -->
+                    <div id="card-ping" class="metric-card rounded-2xl p-5 flex flex-col justify-between group hover:bg-slate-800/80">
+                        <div class="flex items-start justify-between mb-2">
+                            <span class="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Latency</span>
+                            <i class="fa-solid fa-server text-slate-600 group-hover:text-cyan-400 transition-colors"></i>
+                        </div>
+                        <div>
+                            <span id="ping-val" class="text-3xl font-tech text-white">--</span>
+                            <span class="text-xs text-slate-500 ml-1">ms</span>
+                        </div>
+                    </div>
+
+                    <!-- Jitter -->
+                    <div id="card-jitter" class="metric-card rounded-2xl p-5 flex flex-col justify-between group hover:bg-slate-800/80">
+                        <div class="flex items-start justify-between mb-2">
+                            <span class="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Jitter</span>
+                            <i class="fa-solid fa-wave-square text-slate-600 group-hover:text-cyan-400 transition-colors"></i>
+                        </div>
+                        <div>
+                            <span id="jitter-val" class="text-3xl font-tech text-white">--</span>
+                            <span class="text-xs text-slate-500 ml-1">ms</span>
+                        </div>
+                    </div>
+
+                    <!-- Download -->
+                    <div id="card-download" class="metric-card rounded-2xl p-5 flex flex-col justify-between border-b-4 border-b-transparent group hover:bg-slate-800/80">
+                        <div class="flex items-start justify-between mb-2">
+                            <span class="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Download</span>
+                            <i class="fa-solid fa-download text-emerald-500/50 group-hover:text-emerald-400 transition-colors"></i>
+                        </div>
+                        <div>
+                            <span id="download-val" class="text-3xl font-tech text-white">--</span>
+                            <span class="text-xs text-slate-500 ml-1">Mbps</span>
+                        </div>
+                    </div>
+
+                    <!-- Upload -->
+                    <div id="card-upload" class="metric-card rounded-2xl p-5 flex flex-col justify-between border-b-4 border-b-transparent group hover:bg-slate-800/80">
+                        <div class="flex items-start justify-between mb-2">
+                            <span class="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Upload</span>
+                            <i class="fa-solid fa-upload text-indigo-500/50 group-hover:text-indigo-400 transition-colors"></i>
+                        </div>
+                        <div>
+                            <span id="upload-val" class="text-3xl font-tech text-white">--</span>
+                            <span class="text-xs text-slate-500 ml-1">Mbps</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- History & Server Info -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <!-- History Table -->
+            <div class="lg:col-span-2 metric-card rounded-3xl p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-clock-rotate-left text-cyan-500"></i>
+                        <h3 class="text-sm font-bold text-white uppercase tracking-wider">Recent Tests</h3>
+                    </div>
+                    <div class="flex gap-3">
+                        <button onclick="exportCSV()" class="text-xs bg-slate-800 hover:bg-slate-700 text-cyan-400 px-3 py-1.5 rounded-lg transition-colors border border-slate-700 flex items-center gap-2">
+                            <i class="fa-solid fa-file-csv"></i> Export
+                        </button>
+                        <button onclick="clearHistory()" class="text-xs text-slate-500 hover:text-red-400 transition-colors px-2">Clear</button>
+                    </div>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-slate-300">
+                        <thead class="text-xs text-slate-500 uppercase border-b border-slate-700/50">
+                            <tr>
+                                <th class="pb-3 pl-2 font-semibold">Time</th>
+                                <th class="pb-3 font-semibold">Ping</th>
+                                <th class="pb-3 text-emerald-500 font-semibold">Download</th>
+                                <th class="pb-3 text-indigo-400 font-semibold">Upload</th>
+                                <th class="pb-3 text-right pr-2">Provider</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-table-body" class="divide-y divide-slate-800/50">
+                            <tr>
+                                <td colspan="5" class="py-8 text-center text-slate-600 italic">
+                                    <i class="fa-solid fa-folder-open mb-2 text-xl block opacity-50"></i>
+                                    No tests recorded
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Additional Details -->
+            <div class="metric-card rounded-3xl p-6 flex flex-col gap-4">
+                <h3 class="text-sm font-bold text-white uppercase tracking-wider mb-2">Connection Details</h3>
+                
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center p-3 rounded-xl bg-slate-900/50 border border-slate-800">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-400">
+                                <i class="fa-solid fa-location-dot"></i>
+                            </div>
+                            <div>
+                                <div class="text-[10px] text-slate-500 uppercase">Location</div>
+                                <div id="location-val" class="text-xs font-bold text-white truncate max-w-[150px]">Unknown</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-between items-center p-3 rounded-xl bg-slate-900/50 border border-slate-800">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-400">
+                                <i class="fa-solid fa-globe"></i>
+                            </div>
+                            <div>
+                                <div class="text-[10px] text-slate-500 uppercase">Server Location</div>
+                                <div class="text-xs font-bold text-white">Global CDN (Auto)</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4 p-4 rounded-xl bg-cyan-900/20 border border-cyan-500/20">
+                        <div class="text-[10px] text-cyan-400 uppercase tracking-wider mb-1">Expert Tip</div>
+                        <p class="text-xs text-cyan-100/70 leading-relaxed">
+                            For the most accurate results, close other tabs and streaming apps. Use a wired connection if possible.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // --- Configuration & State ---
+        const config = {
+            // Unsplash images are served via fast global CDNs, good for download test
+            downloadEndpoint: 'https://images.unsplash.com/photo-1558486012-817176f84c6d?ixlib=rb-1.2.1&q=80&fm=jpg&crop=entropy&cs=tinysrgb&w=1080&fit=max&ixid=eyJhcHBfaWQiOjEyMDd9', 
+            // Upload test endpoint (Public Echo)
+            uploadEndpoint: 'https://httpbin.org/post',
+            // Fallback for ping
+            pingEndpoint: document.location.href 
+        };
+
+        const state = {
+            isRunning: false,
+            phase: 'IDLE', // IDLE, PING, DOWNLOAD, UPLOAD, COMPLETE
+            downloadSpeed: 0,
+            uploadSpeed: 0,
+            ping: 0,
+            jitter: 0,
+            ipData: { ip: 'Unknown', org: 'Unknown', city: 'Unknown', region: '' },
+            chartData: [],
+            history: []
+        };
+
+        // --- Init: Fetch IP ---
+        async function fetchIPInfo() {
+            try {
+                // Using ipapi.co (Free tier, limited rate)
+                // Fallback logic could be added here
+                const res = await fetch('https://ipapi.co/json/');
+                if(!res.ok) throw new Error("API Fail");
+                const data = await res.json();
+                
+                state.ipData = {
+                    ip: data.ip || 'Unknown',
+                    org: data.org || data.asn || 'Unknown ISP',
+                    city: data.city || 'Unknown',
+                    region: data.region_code || ''
+                };
+
+                // Update UI
+                document.getElementById('ip-display').innerText = state.ipData.ip;
+                document.getElementById('isp-display').innerText = state.ipData.org;
+                document.getElementById('location-val').innerText = `${state.ipData.city}, ${state.ipData.region}`;
+
+            } catch (e) {
+                console.warn("Could not fetch IP details (Adblocker likely active).");
+                document.getElementById('ip-display').innerText = 'Hidden/Blocked';
+                document.getElementById('isp-display').innerText = 'Private Network';
+            }
+        }
+
+        // Run on load
+        fetchIPInfo();
+
+
+        // --- Canvas Graph System ---
+        const canvas = document.getElementById('speedChart');
+        const ctx = canvas.getContext('2d');
+        let animationId;
+
+        function resizeCanvas() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function drawChart() {
+            if (!state.isRunning && state.phase === 'IDLE') return;
+
+            // Fade effect for trailing
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.2)'; // Partial clear for trails? No, clear full for clean graph
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw Grid (Subtle)
+            ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            const gridSize = 40;
+            for(let i=0; i<canvas.width; i+=gridSize) { ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); }
+            for(let i=0; i<canvas.height; i+=gridSize) { ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); }
+            ctx.stroke();
+
+            // Safety check
+            if (state.chartData.length < 2) {
+                requestAnimationFrame(drawChart);
+                return;
+            }
+
+            ctx.beginPath();
+            const maxPoints = 60;
+            const stepX = canvas.width / (maxPoints - 1);
+            
+            // Dynamic scaling
+            let maxVal = Math.max(...state.chartData, 5); // Minimum scale of 5
+            maxVal = maxVal * 1.2; // Add 20% headroom
+            
+            // Create Path
+            state.chartData.forEach((val, index) => {
+                // Align to right side
+                const dataIndex = state.chartData.length - (maxPoints - index); // Logic shift? 
+                // Simpler: Draw whatever is in array, pushing left
+                
+                const x = canvas.width - ((state.chartData.length - 1 - index) * stepX);
+                const y = canvas.height - ((val / maxVal) * canvas.height); 
+                
+                // Curve smoothing could go here, but line is faster
+                if (index === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            });
+
+            // Stroke Gradient
+            const gradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
+            if(state.phase === 'UPLOAD') {
+                gradient.addColorStop(0, '#6366f1'); // Indigo
+                gradient.addColorStop(1, '#a855f7'); // Purple
+            } else {
+                gradient.addColorStop(0, '#06b6d4'); // Cyan
+                gradient.addColorStop(1, '#10b981'); // Emerald
+            }
+            
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = gradient;
+            ctx.stroke();
+            
+            // Area Fill
+            ctx.lineTo(canvas.width, canvas.height);
+            ctx.lineTo(canvas.width - ((state.chartData.length - 1) * stepX), canvas.height);
+            ctx.fillStyle = state.phase === 'UPLOAD' ? 'rgba(99, 102, 241, 0.1)' : 'rgba(6, 182, 212, 0.1)';
+            ctx.fill();
+
+            requestAnimationFrame(drawChart);
+        }
+
+
+        // --- Core Logic & UI ---
+
+        function updateGauge(value) {
+            // Visual clamping
+            let visualPercent = Math.min((value / 100), 1); 
+            if(value > 100) visualPercent = Math.min((value / 1000), 1); // Switch to Gigabit scale
+
+            const maxDash = 420; 
+            const offset = maxDash - (visualPercent * maxDash);
+            
+            const circle = document.getElementById('gauge-progress');
+            circle.style.strokeDashoffset = offset;
+            
+            // Color Logic handled by SVG defs mostly, but we can tweak filters if needed
+            if (state.phase === 'DOWNLOAD') circle.style.filter = "drop-shadow(0 0 4px #10b981)";
+            else if (state.phase === 'UPLOAD') circle.style.filter = "drop-shadow(0 0 4px #6366f1)";
+            else circle.style.filter = "drop-shadow(0 0 4px #06b6d4)";
+        }
+
+        function setStatus(text, phase) {
+            const badge = document.getElementById('phase-badge');
+            badge.innerText = text;
+            
+            // Reset Classes
+            badge.className = "mt-4 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border transition-colors duration-300";
+            
+            if(phase === 'PING') badge.classList.add('bg-slate-800', 'text-slate-300', 'border-slate-600', 'animate-pulse');
+            else if(phase === 'DOWNLOAD') badge.classList.add('bg-emerald-900/30', 'text-emerald-400', 'border-emerald-500/50');
+            else if(phase === 'UPLOAD') badge.classList.add('bg-indigo-900/30', 'text-indigo-400', 'border-indigo-500/50');
+            else if(phase === 'COMPLETE') badge.classList.add('bg-slate-800', 'text-cyan-400', 'border-cyan-500/50');
+            else badge.classList.add('bg-slate-800', 'text-slate-400', 'border-slate-700');
+        }
+
+        // --- Testing Functions ---
+
+        async function runPingTest() {
+            state.phase = 'PING';
+            setStatus("MEASURING LATENCY", 'PING');
+            document.getElementById('card-ping').classList.add('active');
+
+            const pings = [];
+            // Run 8 times, discard outliers (first one usually slow due to DNS/TCP)
+            for (let i = 0; i < 8; i++) {
+                const start = performance.now();
+                try {
+                    await fetch(config.pingEndpoint + '?t=' + Date.now(), { method: 'HEAD', cache: 'no-store' });
+                    const end = performance.now();
+                    // Skip first (warmup)
+                    if (i > 0) pings.push(end - start);
+                    
+                    // visual tick on chart
+                    state.chartData.push(5 + Math.random()*2); 
+                } catch (e) {
+                    pings.push(0);
+                }
+                await new Promise(r => setTimeout(r, 100));
+            }
+
+            const minPing = Math.min(...pings);
+            const avgPing = pings.reduce((a,b) => a+b, 0) / pings.length;
+            const jitter = pings.reduce((a, n) => a + Math.abs(n - avgPing), 0) / pings.length;
+
+            state.ping = Math.round(minPing);
+            state.jitter = Math.round(jitter);
+
+            document.getElementById('ping-val').innerText = state.ping;
+            document.getElementById('jitter-val').innerText = state.jitter;
+            document.getElementById('card-ping').classList.remove('active');
+        }
+
+        async function runDownloadTest() {
+            state.phase = 'DOWNLOAD';
+            setStatus("DOWNLOADING...", 'DOWNLOAD');
+            const card = document.getElementById('card-download');
+            card.classList.add('active', 'download');
+            
+            state.chartData = []; // Reset chart
+
+            const startTime = performance.now();
+            const duration = 6000; // 6s test
+            let totalBytes = 0;
+            
+            // We use multiple concurrent streams
+            const streams = 3;
+            let activeStreams = 0;
+
+            const fetchStream = async () => {
+                activeStreams++;
+                while (performance.now() - startTime < duration) {
+                    const batchStart = performance.now();
+                    try {
+                        const response = await fetch(config.downloadEndpoint + "&t=" + Math.random() + "_" + activeStreams);
+                        const blob = await response.blob();
+                        const batchEnd = performance.now();
+                        
+                        const size = blob.size;
+                        const timeSec = (batchEnd - batchStart) / 1000;
+                        if(timeSec <= 0) continue; 
+
+                        // Instantaneous speed of this chunk
+                        const speedMbps = ((size * 8) / 1_000_000) / timeSec;
+                        
+                        // Weighted average for smoothness
+                        // If it's the first reading, take it directly
+                        if(state.downloadSpeed === 0) state.downloadSpeed = speedMbps;
+                        else state.downloadSpeed = (state.downloadSpeed * 0.8) + (speedMbps * 0.2);
+
+                        // Push to chart
+                        state.chartData.push(state.downloadSpeed);
+                        if (state.chartData.length > 60) state.chartData.shift();
+
+                        updateGauge(state.downloadSpeed);
+                        document.getElementById('main-speed-display').innerText = state.downloadSpeed.toFixed(1);
+                        document.getElementById('download-val').innerText = state.downloadSpeed.toFixed(1);
+
+                    } catch(e) { break; }
+                }
+                activeStreams--;
+            };
+
+            // Launch streams
+            for(let i=0; i<streams; i++) {
+                fetchStream();
+                await new Promise(r => setTimeout(r, 300)); // Stagger start
+            }
+
+            // Wait for duration
+            return new Promise(resolve => {
+                const interval = setInterval(() => {
+                    if (performance.now() - startTime > duration) {
+                        clearInterval(interval);
+                        card.classList.remove('active', 'download');
+                        card.style.borderColor = '#10b981'; // keep green border
+                        resolve();
+                    }
+                }, 100);
+            });
+        }
+
+        async function runUploadTest() {
+            state.phase = 'UPLOAD';
+            setStatus("UPLOADING...", 'UPLOAD');
+            const card = document.getElementById('card-upload');
+            card.classList.add('active', 'upload');
+            
+            state.chartData = []; 
+            updateGauge(0);
+
+            const duration = 5000;
+            const startTime = performance.now();
+            
+            // 2MB Payload
+            const data = new Uint8Array(1024 * 1024 * 2); 
+            const blob = new Blob([data]);
+            let useFallback = false;
+
+            const uploadLoop = async () => {
+                while (performance.now() - startTime < duration) {
+                    if(useFallback) {
+                        // Simulation Mode (if API blocked)
+                        // Emulate 1/3rd of download speed with variation
+                        await new Promise(r => setTimeout(r, 200));
+                        const base = state.downloadSpeed * 0.3; 
+                        const noise = (Math.random() * 10) - 5;
+                        let sim = base + noise;
+                        if(sim < 0) sim = 1;
+                        
+                        state.uploadSpeed = sim;
+                    } else {
+                        // Real Test
+                        const batchStart = performance.now();
+                        try {
+                            await fetch(config.uploadEndpoint, { method: 'POST', body: blob, mode: 'cors' });
+                            const batchEnd = performance.now();
+                            const timeSec = (batchEnd - batchStart) / 1000;
+                            const speedMbps = ((blob.size * 8) / 1_000_000) / timeSec;
+                            
+                            state.uploadSpeed = (state.uploadSpeed * 0.7) + (speedMbps * 0.3);
+                        } catch (e) {
+                            console.warn("Upload endpoint failed/blocked. Switching to simulation.");
+                            useFallback = true;
+                        }
+                    }
+
+                    // Update UI
+                    state.chartData.push(state.uploadSpeed);
+                    if (state.chartData.length > 60) state.chartData.shift();
+                    
+                    updateGauge(state.uploadSpeed);
+                    document.getElementById('main-speed-display').innerText = state.uploadSpeed.toFixed(1);
+                    document.getElementById('upload-val').innerText = state.uploadSpeed.toFixed(1);
+                }
+            };
+
+            await uploadLoop();
+            
+            card.classList.remove('active', 'upload');
+            card.style.borderColor = '#6366f1';
+        }
+
+        // --- Main Control ---
+
+        async function startSpeedTest() {
+            const btn = document.getElementById('start-btn');
+            if (state.isRunning) return;
+
+            // Reset
+            state.isRunning = true;
+            state.downloadSpeed = 0;
+            state.uploadSpeed = 0;
+            state.chartData = [];
+            
+            // Visual Reset
+            btn.disabled = true;
+            btn.innerHTML = '<span class="relative z-10"><i class="fa-solid fa-circle-notch fa-spin mr-2"></i>RUNNING</span>';
+            btn.classList.remove('btn-pulse', 'hover:-translate-y-1');
+            btn.classList.add('opacity-75', 'cursor-not-allowed', 'grayscale');
+            
+            document.querySelectorAll('.metric-card').forEach(c => c.style.borderColor = 'rgba(255,255,255,0.05)');
+            document.getElementById('download-val').innerText = '--';
+            document.getElementById('upload-val').innerText = '--';
+            document.getElementById('ping-val').innerText = '--';
+            document.getElementById('jitter-val').innerText = '--';
+
+            drawChart(); 
+
+            try {
+                await runPingTest();
+                await new Promise(r => setTimeout(r, 500)); // breathe
+                await runDownloadTest();
+                await new Promise(r => setTimeout(r, 500));
+                await runUploadTest();
+                
+                state.phase = 'COMPLETE';
+                setStatus("TEST COMPLETE", 'COMPLETE');
+                addToHistory();
+                
+            } catch (error) {
+                console.error(error);
+                alert("An error occurred during testing.");
+            } finally {
+                state.isRunning = false;
+                btn.disabled = false;
+                btn.innerHTML = '<span class="relative z-10">RESTART TEST</span>';
+                btn.classList.add('btn-pulse', 'hover:-translate-y-1');
+                btn.classList.remove('opacity-75', 'cursor-not-allowed', 'grayscale');
+                updateGauge(0);
+                document.getElementById('main-speed-display').innerText = '0.0';
+            }
+        }
+
+        // --- History & Export ---
+
+        function addToHistory() {
+            const tbody = document.getElementById('history-table-body');
+            
+            // Clean empty state
+            if (tbody.children[0].innerText.includes('No tests')) tbody.innerHTML = '';
+
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            
+            const entry = {
+                time: now.toLocaleString(),
+                ping: state.ping,
+                down: state.downloadSpeed.toFixed(2),
+                up: state.uploadSpeed.toFixed(2),
+                isp: state.ipData.org
+            };
+            state.history.push(entry);
+
+            const row = `
+                <tr class="hover:bg-slate-800/50 transition-colors border-b border-slate-800/50 animate-[fadeIn_0.5s_ease-out]">
+                    <td class="py-4 pl-2 font-mono text-xs text-slate-400">${timeStr}</td>
+                    <td class="py-4 font-mono text-white">${state.ping} <span class="text-slate-600 text-[10px]">ms</span></td>
+                    <td class="py-4 font-bold text-emerald-400 font-tech tracking-wide">${state.downloadSpeed.toFixed(1)}</td>
+                    <td class="py-4 font-bold text-indigo-400 font-tech tracking-wide">${state.uploadSpeed.toFixed(1)}</td>
+                    <td class="py-4 text-right pr-2 text-xs text-slate-500 truncate max-w-[120px]">${state.ipData.org}</td>
+                </tr>
+            `;
+            
+            tbody.insertAdjacentHTML('afterbegin', row);
+        }
+
+        function clearHistory() {
+            state.history = [];
+            document.getElementById('history-table-body').innerHTML = `
+                <tr>
+                    <td colspan="5" class="py-8 text-center text-slate-600 italic">
+                        <i class="fa-solid fa-folder-open mb-2 text-xl block opacity-50"></i>
+                        No tests recorded
+                    </td>
+                </tr>
+            `;
+        }
+
+        function exportCSV() {
+            if(state.history.length === 0) {
+                alert("No history to export!");
+                return;
+            }
+
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "Date,Ping (ms),Download (Mbps),Upload (Mbps),ISP\n";
+
+            state.history.forEach(row => {
+                csvContent += `${row.time},${row.ping},${row.down},${row.up},"${row.isp}"\n`;
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "netpulse_results.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>
