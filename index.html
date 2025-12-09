@@ -347,14 +347,15 @@
                         </div>
                     </div>
 
+                    <!-- Browser Network Info -->
                     <div class="flex justify-between items-center p-3 rounded-xl bg-slate-900/50 border border-slate-800">
                         <div class="flex items-center gap-3">
                             <div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-400">
-                                <i class="fa-solid fa-globe"></i>
+                                <i class="fa-solid fa-signal"></i>
                             </div>
                             <div>
-                                <div class="text-[10px] text-slate-500 uppercase">Server Location</div>
-                                <div class="text-xs font-bold text-white">Global CDN (Auto)</div>
+                                <div class="text-[10px] text-slate-500 uppercase">Link Est. (Browser)</div>
+                                <div id="browser-net-val" class="text-xs font-bold text-white">Detecting...</div>
                             </div>
                         </div>
                     </div>
@@ -429,8 +430,33 @@
             }
         }
 
+        // --- Browser Connection API ---
+        function initNetworkInfo() {
+            const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+            const el = document.getElementById('browser-net-val');
+            
+            if (conn) {
+                const update = () => {
+                    const type = conn.effectiveType ? conn.effectiveType.toUpperCase() : 'UNKNOWN';
+                    // Fallback to 0 if undefined
+                    const down = conn.downlink || '?';
+                    const rtt = conn.rtt || '?';
+                    
+                    el.innerText = `${type} | ~${down}Mbps | ${rtt}ms RTT`;
+                };
+
+                // Listen for changes
+                conn.addEventListener('change', update);
+                // Initial call
+                update();
+            } else {
+                el.innerText = "API Not Supported";
+            }
+        }
+
         // Run on load
         fetchIPInfo();
+        initNetworkInfo();
 
 
         // --- Canvas Graph System ---
